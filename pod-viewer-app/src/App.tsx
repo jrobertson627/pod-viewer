@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import "./App.css";
 
@@ -10,6 +10,10 @@ function App() {
   const [pods, setPods] = useState<Pod[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const [namespaceFilter, setNamespaceFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [restartFilter, setRestartFilter] = useState("All");
 
   async function loadPods() {
     setLoading(true);
@@ -61,6 +65,39 @@ function App() {
     }
   }
 
+  const namespaces = useMemo(() => {
+    const set = new Set(pods.map((p) => p["NAMESPACE"]));
+    return ["All", ...Array.from(set)];
+  }, [pods]);
+
+  const statuses = useMemo(() => {
+    const set = new Set(pods.map((p) => p["STATUS"]));
+    return ["All", ...Array.from(set)];
+  }, [pods]);
+
+  const restarts = useMemo(() => {
+    const set = new Set(pods.map((p) => p["RESTARTS"]));
+    return ["All", ...Array.from(set)];
+  }, [pods]);
+
+  // 🔹 Filter pods by search and dropdown values
+  const filteredPods = useMemo(() => {
+    return pods.filter((pod) => {
+      const matchesNamespace =
+        namespaceFilter === "All" || pod["NAMESPACE"] === namespaceFilter;
+      const matchesStatus =
+        statusFilter === "All" || pod["STATUS"] === statusFilter;
+      const matchesRestart =
+        restartFilter === "All" || pod["RESTARTS"] === restartFilter;
+
+      return (
+        matchesNamespace &&
+        matchesStatus &&
+        matchesRestart
+      );
+    });
+  }, [pods, namespaceFilter, statusFilter, restartFilter]);
+
   return (
     <main className="min-h-screen flex items-center justify-center p-6 bg-gray-50">
       <div className="w-full max-w-4xl bg-white rounded-2xl shadow-lg p-6">
@@ -76,6 +113,43 @@ function App() {
           >
             {loading ? "Loading..." : "Load Pods"}
           </button>
+
+          <select
+            value={namespaceFilter}
+            onChange={(e) => setNamespaceFilter(e.target.value)}
+            className="border border-gray-300 rounded px-3 py-2"
+          >
+            {namespaces.map((ns) => (
+              <option key={ns} value={ns}>
+                {ns}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="border border-gray-300 rounded px-3 py-2"
+          >
+            {statuses.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={restartFilter}
+            onChange={(e) => setRestartFilter(e.target.value)}
+            className="border border-gray-300 rounded px-3 py-2"
+          >
+            {restarts.map((r) => (
+              <option key={r} value={r}>
+                {r}
+              </option>
+            ))}
+          </select>
+
         </div>
 
         <div className="overflow-x-auto">
@@ -93,7 +167,7 @@ function App() {
               </tr>
             </thead>
             <tbody>
-              {pods.map((pod, idx) => (
+              {filteredPods.map((pod, idx) => (
                 <tr
                   key={idx}
                   className="border-b last:border-b-0 hover:bg-gray-50 transition"
@@ -130,9 +204,9 @@ function App() {
             </tbody>
           </table>
 
-          {pods.length === 0 && !loading && (
+          {filteredPods.length === 0 && !loading && (
             <p className="text-gray-500 text-center mt-4">
-              Click "Load Pods" to fetch pod data.
+              No pods match your filters.
             </p>
           )}
         </div>
