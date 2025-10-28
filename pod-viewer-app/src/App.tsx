@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import "./App.css";
 
@@ -11,14 +11,33 @@ function App() {
   const [headers, setHeaders] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const [namespaceFilter, setNamespaceFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
   const [restartFilter, setRestartFilter] = useState("All");
+
+  const [namespaces, setNamespaces] = useState<string[]>([]);
+  const [selectedNamespace, setSelectedNamespace] = useState("All");
+
+  useEffect(() => {
+    async function fetchNamespaces() {
+      try {
+        const result = await invoke<string>("get_namespaces");
+        const list = result
+          .split("\n")
+          .filter((n) => n.trim().length > 0)
+          .map((n) => n.replace("namespace/", ""));
+        setNamespaces(["All", ...list]);
+      } catch (err) {
+        console.error("Failed to load namespaces", err);
+        setNamespaces(["All"]);
+      }
+    }
+    fetchNamespaces();
+  }, []);
 
   async function loadPods() {
     setLoading(true);
     try {
-      const result = await invoke<string>("get_pods");
+      const result = await invoke<string>("get_pods", { namespace: selectedNamespace });
       const lines = result.trim().split("\n");
 
       if (lines.length === 0) {
@@ -38,9 +57,11 @@ function App() {
         parsedHeaders.forEach((header, i) => {
           pod[header] = columns[i] || "";
         });
+        if (!pod["NAMESPACE"]) {
+          pod["NAMESPACE"] = selectedNamespace !== "All" ? selectedNamespace : "";
+        }
         return pod;
       });
-
       setPods(podList);
     } catch (error) {
       console.error(error);
@@ -65,38 +86,29 @@ function App() {
     }
   }
 
-  const namespaces = useMemo(() => {
-    const set = new Set(pods.map((p) => p["NAMESPACE"]));
-    return ["All", ...Array.from(set)];
-  }, [pods]);
-
-  const statuses = useMemo(() => {
+  const statusesDrop = useMemo(() => {
     const set = new Set(pods.map((p) => p["STATUS"]));
     return ["All", ...Array.from(set)];
   }, [pods]);
 
-  const restarts = useMemo(() => {
+  const restartsDrop = useMemo(() => {
     const set = new Set(pods.map((p) => p["RESTARTS"]));
     return ["All", ...Array.from(set)];
   }, [pods]);
 
-  // 🔹 Filter pods by search and dropdown values
   const filteredPods = useMemo(() => {
     return pods.filter((pod) => {
-      const matchesNamespace =
-        namespaceFilter === "All" || pod["NAMESPACE"] === namespaceFilter;
       const matchesStatus =
         statusFilter === "All" || pod["STATUS"] === statusFilter;
       const matchesRestart =
         restartFilter === "All" || pod["RESTARTS"] === restartFilter;
 
       return (
-        matchesNamespace &&
         matchesStatus &&
         matchesRestart
       );
     });
-  }, [pods, namespaceFilter, statusFilter, restartFilter]);
+  }, [pods, statusFilter, restartFilter]);
 
   return (
     <main className="min-h-screen flex items-center justify-center p-6 bg-gray-50">
@@ -115,8 +127,8 @@ function App() {
           </button>
 
           <select
-            value={namespaceFilter}
-            onChange={(e) => setNamespaceFilter(e.target.value)}
+            value={selectedNamespace}
+            onChange={(e) => setSelectedNamespace(e.target.value)}
             className="border border-gray-300 rounded px-3 py-2"
           >
             {namespaces.map((ns) => (
@@ -131,7 +143,7 @@ function App() {
             onChange={(e) => setStatusFilter(e.target.value)}
             className="border border-gray-300 rounded px-3 py-2"
           >
-            {statuses.map((s) => (
+            {statusesDrop.map((s) => (
               <option key={s} value={s}>
                 {s}
               </option>
@@ -143,7 +155,7 @@ function App() {
             onChange={(e) => setRestartFilter(e.target.value)}
             className="border border-gray-300 rounded px-3 py-2"
           >
-            {restarts.map((r) => (
+            {restartsDrop.map((r) => (
               <option key={r} value={r}>
                 {r}
               </option>
