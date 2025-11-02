@@ -12,7 +12,6 @@ function App() {
   const [loading, setLoading] = useState(false);
 
   const [statusFilter, setStatusFilter] = useState("All");
-  const [restartFilter, setRestartFilter] = useState("All");
 
   const [namespaces, setNamespaces] = useState<string[]>([]);
   const [selectedNamespace, setSelectedNamespace] = useState("All");
@@ -94,24 +93,14 @@ function App() {
     return ["All", ...Array.from(set)];
   }, [pods]);
 
-  const restartsDrop = useMemo(() => {
-    const set = new Set(pods.map((p) => p["RESTARTS"]));
-    return ["All", ...Array.from(set)];
-  }, [pods]);
-
   const filteredPods = useMemo(() => {
     return pods.filter((pod) => {
       const matchesStatus =
         statusFilter === "All" || pod["STATUS"] === statusFilter;
-      const matchesRestart =
-        restartFilter === "All" || pod["RESTARTS"] === restartFilter;
 
-      return (
-        matchesStatus &&
-        matchesRestart
-      );
+      return matchesStatus;
     });
-  }, [pods, statusFilter, restartFilter]);
+  }, [pods, statusFilter]);
 
   const sortedPods = useMemo(() => {
     if (!sortColumn) return filteredPods;
@@ -177,18 +166,6 @@ function App() {
             {statusesDrop.map((s) => (
               <option key={s} value={s}>
                 {s}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={restartFilter}
-            onChange={(e) => setRestartFilter(e.target.value)}
-            className="border border-gray-300 rounded px-3 py-2"
-          >
-            {restartsDrop.map((r) => (
-              <option key={r} value={r}>
-                {r}
               </option>
             ))}
           </select>
