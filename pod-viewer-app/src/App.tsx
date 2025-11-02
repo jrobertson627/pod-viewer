@@ -1,38 +1,30 @@
-import { useState, useMemo, useEffect } from "react";
+import { Table } from "./components/Table"
+import { Card } from "./components/Card";
+import { Dropdown } from "./components/Dropdown";
+import { Button } from "./components/Button";
+import { statusClass } from "./constants";
+import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { POD_STATUSES, statusClass, PodStatus } from "./constants";
-import "./App.css";
 
 interface Pod {
-  [key: string]: string; // dynamic keys based on headers
+  [key: string]: string;
 }
 
-function App() {
+export default function App() {
   const [pods, setPods] = useState<Pod[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  const [statusFilter, setStatusFilter] = useState<PodStatus>("All");
-
   const [namespaces, setNamespaces] = useState<string[]>([]);
   const [selectedNamespace, setSelectedNamespace] = useState("All");
-
-  const [sortColumn, setSortColumn] = useState<string | null>(null);
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     async function fetchNamespaces() {
-      try {
-        const result = await invoke<string>("get_namespaces");
-        const list = result
-          .split("\n")
-          .filter((n) => n.trim().length > 0)
-          .map((n) => n.replace("namespace/", ""));
-        setNamespaces(["All", ...list]);
-      } catch (err) {
-        console.error("Failed to load namespaces", err);
-        setNamespaces(["All"]);
-      }
+      const result = await invoke<string>("get_namespaces");
+      const list = result
+        .split("\n")
+        .filter((n) => n.trim().length > 0)
+        .map((n) => n.replace("namespace/", ""));
+      setNamespaces(["All", ...list]);
     }
     fetchNamespaces();
   }, []);
@@ -40,187 +32,64 @@ function App() {
   async function loadPods() {
     setLoading(true);
     try {
-      const result = await invoke<string>("get_pods", { namespace: selectedNamespace });
+      const result = await invoke<string>("get_pods", {
+        namespace: selectedNamespace,
+      });
       const lines = result.trim().split("\n");
-
-      if (lines.length === 0) {
-        setPods([]);
-        setHeaders([]);
-        return;
-      }
-
-      // First line contains headers
       const parsedHeaders = lines[0].split(/\s+/);
-      setHeaders(parsedHeaders);
-
-      // Parse remaining lines
       const podList: Pod[] = lines.slice(1).map((line) => {
         const columns = line.split(/\s+/);
         const pod: Pod = {};
-        parsedHeaders.forEach((header, i) => {
-          pod[header] = columns[i] || "";
-        });
-        if (!pod["NAMESPACE"]) {
-          pod["NAMESPACE"] = selectedNamespace !== "All" ? selectedNamespace : "";
-        }
+        parsedHeaders.forEach((h, i) => (pod[h] = columns[i] || ""));
         return pod;
       });
+      setHeaders(parsedHeaders);
       setPods(podList);
-    } catch (error) {
-      console.error(error);
-      setPods([{ NAME: "Error fetching pods", STATUS: "Error" }]);
-      setHeaders(["NAME", "STATUS"]);
     } finally {
       setLoading(false);
     }
   }
 
-  const filteredPods = useMemo(() => {
-    return pods.filter((pod) => {
-      const matchesStatus =
-        statusFilter === "All" || pod["STATUS"] === statusFilter;
-
-      return matchesStatus;
-    });
-  }, [pods, statusFilter]);
-
-  const sortedPods = useMemo(() => {
-    if (!sortColumn) return filteredPods;
-
-    return [...filteredPods].sort((a, b) => {
-      const valA = a[sortColumn] || "";
-      const valB = b[sortColumn] || "";
-
-      if (!isNaN(Number(valA)) && !isNaN(Number(valB))) {
-        return sortDirection === "asc"
-          ? Number(valA) - Number(valB)
-          : Number(valB) - Number(valA);
-      }
-      return sortDirection === "asc"
-        ? valA.localeCompare(valB)
-        : valB.localeCompare(valA);
-    });
-  }, [filteredPods, sortColumn, sortDirection]);
-
-  const handleSort = (column: string) => {
-    if (sortColumn === column) {
-      // Toggle direction if clicking same column
-      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
-    } else {
-      setSortColumn(column);
-      setSortDirection("asc");
-    }
-  };
-
   return (
-    <main className="min-h-screen flex items-center justify-center p-6 bg-gray-50">
-      <div className="w-full max-w-4xl bg-white rounded-2xl shadow-lg p-6">
-        <h1 className="text-2xl font-bold mb-4 text-center text-gray-800">
-          Kubernetes Pods
-        </h1>
+    <main className="min-h-screen flex items-center justify-center p-8 bg-gray-50">
+      <div className="w-full max-w-6xl space-y-6">
+        <Card>
+          <div className="flex gap-4 items-end flex-wrap">
+            <Dropdown
+              label="Namespace"
+              value={selectedNamespace}
+              options={namespaces}
+              onChange={setSelectedNamespace}
+            />
+            <Button onClick={loadPods} disabled={loading}>
+              {loading ? "Loading..." : "Load Pods"}
+            </Button>
+          </div>
+        </Card>
 
-        <div className="flex justify-center mb-4">
-          <button
-            className="bg-blue-600 text-white font-medium px-6 py-2 rounded-lg shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 transition"
-            onClick={loadPods}
-            disabled={loading}
-          >
-            {loading ? "Loading..." : "Load Pods"}
-          </button>
-
-          <select
-            value={selectedNamespace}
-            onChange={(e) => setSelectedNamespace(e.target.value)}
-            className="border border-gray-300 rounded px-3 py-2"
-          >
-            {namespaces.map((ns) => (
-              <option key={ns} value={ns}>
-                {ns}
-              </option>
-            ))}
-          </select>
-
-          <select
-      value={statusFilter}
-      onChange={(e) => setStatusFilter(e.target.value as PodStatus)}
-      className="border border-gray-300 rounded px-3 py-2"
-    >
-      {POD_STATUSES.map((status) => (
-        <option key={status} value={status}>
-          {status}
-        </option>
-      ))}
-    </select>
-
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="min-w-full bg-gray-50 rounded-lg">
-            <thead className="bg-gray-100">
-              <tr>
-                {headers.map((header) => (
-                  <th
-                    key={header}
-                    onClick={() => handleSort(header)}
-                    className="px-4 py-2 text-left text-sm font-semibold text-gray-700 cursor-pointer select-none hover:bg-gray-200"
-                  >
-                    {header}
-                    {sortColumn === header && (
-                      <span className="ml-1 text-gray-500">
-                        {sortDirection === "asc" ? "▲" : "▼"}
-                      </span>
-                    )}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {sortedPods.map((pod, idx) => (
-                <tr
-                  key={idx}
-                  className="border-b last:border-b-0 hover:bg-gray-50 transition"
-                >
-                  {headers.map((header) => {
-                    const value = pod[header];
-                    if (header.toLowerCase() === "status") {
-                      return (
-                        <td
-                          key={header}
-                          className="px-4 py-2"
-                        >
-                          <span
-                            className={`px-2 py-1 rounded-full text-sm font-semibold ${statusClass(
-                              value
-                            )}`}
-                          >
-                            {value}
-                          </span>
-                        </td>
-                      );
-                    }
-                    return (
-                      <td
-                        key={header}
-                        className="px-4 py-2 font-mono text-sm text-gray-800"
-                      >
-                        {value}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          {filteredPods.length === 0 && !loading && (
-            <p className="text-gray-500 text-center mt-4">
-              No pods match your filters.
-            </p>
-          )}
-        </div>
+        {pods.length > 0 && (
+          <Card>
+            <Table
+              data={pods}
+              columns={headers}
+              renderCell={(col, value) => {
+                if (col.toLowerCase() === "status") {
+                  return (
+                    <span
+                      className={`px-2 py-1 rounded-full text-sm font-semibold ${statusClass(
+                        value ?? ""
+                      )}`}
+                    >
+                      {value}
+                    </span>
+                  );
+                }
+                return value;
+              }}
+            />
+          </Card>
+        )}
       </div>
     </main>
   );
 }
-
-export default App;
