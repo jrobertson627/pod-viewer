@@ -17,6 +17,9 @@ function App() {
   const [namespaces, setNamespaces] = useState<string[]>([]);
   const [selectedNamespace, setSelectedNamespace] = useState("All");
 
+  const [sortColumn, setSortColumn] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+
   useEffect(() => {
     async function fetchNamespaces() {
       try {
@@ -110,6 +113,34 @@ function App() {
     });
   }, [pods, statusFilter, restartFilter]);
 
+  const sortedPods = useMemo(() => {
+    if (!sortColumn) return filteredPods;
+
+    return [...filteredPods].sort((a, b) => {
+      const valA = a[sortColumn] || "";
+      const valB = b[sortColumn] || "";
+
+      if (!isNaN(Number(valA)) && !isNaN(Number(valB))) {
+        return sortDirection === "asc"
+          ? Number(valA) - Number(valB)
+          : Number(valB) - Number(valA);
+      }
+      return sortDirection === "asc"
+        ? valA.localeCompare(valB)
+        : valB.localeCompare(valA);
+    });
+  }, [filteredPods, sortColumn, sortDirection]);
+
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      // Toggle direction if clicking same column
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortColumn(column);
+      setSortDirection("asc");
+    }
+  };
+
   return (
     <main className="min-h-screen flex items-center justify-center p-6 bg-gray-50">
       <div className="w-full max-w-4xl bg-white rounded-2xl shadow-lg p-6">
@@ -171,15 +202,21 @@ function App() {
                 {headers.map((header) => (
                   <th
                     key={header}
-                    className="px-4 py-2 text-left text-sm font-semibold text-gray-700"
+                    onClick={() => handleSort(header)}
+                    className="px-4 py-2 text-left text-sm font-semibold text-gray-700 cursor-pointer select-none hover:bg-gray-200"
                   >
                     {header}
+                    {sortColumn === header && (
+                      <span className="ml-1 text-gray-500">
+                        {sortDirection === "asc" ? "▲" : "▼"}
+                      </span>
+                    )}
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {filteredPods.map((pod, idx) => (
+              {sortedPods.map((pod, idx) => (
                 <tr
                   key={idx}
                   className="border-b last:border-b-0 hover:bg-gray-50 transition"
