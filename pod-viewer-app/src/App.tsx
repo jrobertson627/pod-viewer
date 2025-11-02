@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { POD_STATUSES, statusClass, PodStatus } from "./constants";
 import "./App.css";
 
 interface Pod {
@@ -11,7 +12,7 @@ function App() {
   const [headers, setHeaders] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const [statusFilter, setStatusFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useState<PodStatus>("All");
 
   const [namespaces, setNamespaces] = useState<string[]>([]);
   const [selectedNamespace, setSelectedNamespace] = useState("All");
@@ -73,25 +74,6 @@ function App() {
       setLoading(false);
     }
   }
-
-  function statusClass(status: string) {
-    switch (status.toLowerCase()) {
-      case "running":
-        return "bg-green-100 text-green-800";
-      case "pending":
-        return "bg-yellow-100 text-yellow-800";
-      case "error":
-      case "failed":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  }
-
-  const statusesDrop = useMemo(() => {
-    const set = new Set(pods.map((p) => p["STATUS"]));
-    return ["All", ...Array.from(set)];
-  }, [pods]);
 
   const filteredPods = useMemo(() => {
     return pods.filter((pod) => {
@@ -159,16 +141,16 @@ function App() {
           </select>
 
           <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="border border-gray-300 rounded px-3 py-2"
-          >
-            {statusesDrop.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
+      value={statusFilter}
+      onChange={(e) => setStatusFilter(e.target.value as PodStatus)}
+      className="border border-gray-300 rounded px-3 py-2"
+    >
+      {POD_STATUSES.map((status) => (
+        <option key={status} value={status}>
+          {status}
+        </option>
+      ))}
+    </select>
 
         </div>
 
