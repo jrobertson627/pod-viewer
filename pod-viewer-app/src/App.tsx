@@ -1,7 +1,4 @@
-import { Table } from "./components/Table"
-import { Card } from "./components/Card";
-import { Dropdown } from "./components/Dropdown";
-import { Button } from "./components/Button";
+import { Table, Card, Dropdown, Button } from "./components";
 import { POD_STATUSES, statusClass } from "./constants";
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
