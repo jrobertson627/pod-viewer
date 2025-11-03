@@ -11,7 +11,7 @@ export function useLogs() {
     setLoading(true);
     setError(null);
     try {
-      const result = await invoke<string>("get_logs", { pod: podName, namespace });
+      const result = await invoke<string>("stream_logs", { podName, namespace });
       setLogs(result.split("\n"));
       console.log(logs);
     } catch (err: any) {
