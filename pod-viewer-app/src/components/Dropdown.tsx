@@ -7,6 +7,7 @@ interface DropdownProps {
   options: string[];
   onChange: (value: string) => void;
   className?: string;
+  variant?: "primary" | "secondary";
 }
 
 export const Dropdown: React.FC<DropdownProps> = ({
@@ -15,7 +16,17 @@ export const Dropdown: React.FC<DropdownProps> = ({
   options,
   onChange,
   className,
+  variant = "primary",
 }) => {
+
+const selectClasses = cn(
+    "border rounded px-3 py-2 text-sm focus:outline-none transition",
+    variant === "primary"
+      ? "bg-white border-blue-400 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 text-gray-800"
+      : "bg-gray-100 border-gray-300 text-gray-700 hover:bg-gray-200 focus:ring-1 focus:ring-gray-400",
+    className
+  );
+
   return (
     <div className={cn("flex flex-col", className)}>
       {label && (
@@ -24,7 +35,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition"
+        className={selectClasses}
       >
         {options.map((opt) => (
           <option key={opt} value={opt}>

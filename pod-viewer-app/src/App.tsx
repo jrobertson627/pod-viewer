@@ -2,7 +2,7 @@ import { Table } from "./components/Table"
 import { Card } from "./components/Card";
 import { Dropdown } from "./components/Dropdown";
 import { Button } from "./components/Button";
-import { statusClass } from "./constants";
+import { POD_STATUSES, statusClass } from "./constants";
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 
@@ -16,6 +16,7 @@ export default function App() {
   const [namespaces, setNamespaces] = useState<string[]>([]);
   const [selectedNamespace, setSelectedNamespace] = useState("All");
   const [loading, setLoading] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState<string>("All");
 
   useEffect(() => {
     async function fetchNamespaces() {
@@ -45,10 +46,17 @@ export default function App() {
       });
       setHeaders(parsedHeaders);
       setPods(podList);
+      setSelectedStatus("All");
     } finally {
       setLoading(false);
     }
   }
+
+  const filteredPods = pods.filter((pod) => {
+    const matchesStatus =
+      selectedStatus === "All" || pod["STATUS"] === selectedStatus;
+    return matchesStatus;
+  });
 
   return (
     <main className="min-h-screen flex items-center justify-center p-8 bg-gray-50">
@@ -56,7 +64,7 @@ export default function App() {
         <Card>
           <div className="flex gap-4 items-end flex-wrap">
             <Dropdown
-              label="Namespace"
+              label="Namespace (click Load Pods)"
               value={selectedNamespace}
               options={namespaces}
               onChange={setSelectedNamespace}
@@ -64,13 +72,22 @@ export default function App() {
             <Button onClick={loadPods} disabled={loading}>
               {loading ? "Loading..." : "Load Pods"}
             </Button>
+            {pods.length > 0 && (
+              <Dropdown
+                label="Filter by Status"
+                value={selectedStatus}
+                options={POD_STATUSES as unknown as string[]} // cast to string[]
+                onChange={setSelectedStatus}
+                variant={"secondary"}
+              />
+            )}
           </div>
         </Card>
 
         {pods.length > 0 && (
           <Card>
             <Table
-              data={pods}
+              data={filteredPods}
               columns={headers}
               renderCell={(col, value) => {
                 if (col.toLowerCase() === "status") {
