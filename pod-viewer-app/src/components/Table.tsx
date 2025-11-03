@@ -70,14 +70,14 @@ export function Table<T extends Record<string, string | number | undefined>>({
                   <div
                     className={cn(
                       "flex items-center gap-1",
-                      isCollapsed && "justify-center rotate-90 origin-center"
+                      isCollapsed && "justify-center origin-center"
                     )}
                   >
                     <span
                       onClick={() => handleSort(col)}
                       className={cn(
-                        "cursor-pointer",
-                        isCollapsed ? "text-xs tracking-tighter" : ""
+                        "cursor-pointer transition-colors hover:text-blue-600",
+                        isCollapsed ? "text-xs tracking-tighter text-gray-500" : "text-gray-700"
                       )}
                     >
                       {col}
@@ -89,7 +89,7 @@ export function Table<T extends Record<string, string | number | undefined>>({
                           "opacity-30 transition-transform",
                           sortColumn === col
                             ? sortDirection === "asc"
-                              ? "rotate-180 opacity-70"
+                              ? "rotate-180 text-blue-500 opacity-70"
                               : "opacity-70"
                             : ""
                         )}
@@ -97,12 +97,16 @@ export function Table<T extends Record<string, string | number | undefined>>({
                     )}
                     <button
                       onClick={() => toggleCollapse(col)}
-                      className="absolute -right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
+                      className={cn(
+                        "absolute -right-2 top-1/2 -translate-y-1/2 rounded-full p-0.5",
+                        "text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-all duration-200",
+                        isCollapsed && "text-blue-500 bg-blue-50"
+                      )}
+                      >
                       {isCollapsed ? (
-                        <ChevronRight size={14} />
+                        <ChevronRight size={16} strokeWidth={2.5} />
                       ) : (
-                        <ChevronLeft size={14} />
+                        <ChevronLeft size={16} strokeWidth={2.5}/>
                       )}
                     </button>
                   </div>
