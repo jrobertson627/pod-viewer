@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { cn } from "./../utils/cn";
-import { ArrowUpDown } from "lucide-react";
+import { ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface TableProps<T> {
   data: T[];
@@ -17,7 +17,8 @@ export function Table<T extends Record<string, string | number | undefined>>({
 }: TableProps<T>) {
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
-
+  const [collapsedColumns, setCollapsedColumns] = useState<Set<string>>(new Set());
+  
   const handleSort = (column: string) => {
     let newDirection: "asc" | "desc" = "asc";
     if (sortColumn === column && sortDirection === "asc") {
@@ -41,33 +42,73 @@ export function Table<T extends Record<string, string | number | undefined>>({
     });
   }, [data, sortColumn, sortDirection]);
 
+  const toggleCollapse = (column: string) => {
+    setCollapsedColumns((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(column)) newSet.delete(column);
+      else newSet.add(column);
+      return newSet;
+    });
+  };
+
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full bg-gray-50 rounded-lg border border-gray-200">
         <thead className="bg-gray-100">
           <tr>
-            {columns.map((col) => (
-              <th
-                key={col}
-                className="px-4 py-2 text-left text-sm font-semibold text-gray-700 cursor-pointer select-none"
-                onClick={() => handleSort(col)}
-              >
-                <div className="flex items-center gap-1">
-                  {col}
-                  <ArrowUpDown
-                    size={14}
+            {columns.map(
+              (col) => {
+                const isCollapsed = collapsedColumns.has(col);
+              return (
+                <th
+                  key={col}
+                  className={cn(
+                    "px-3 py-2 text-left text-sm font-semibold select-none border-r border-gray-200 relative",
+                    isCollapsed && "w-4 overflow-hidden text-gray-400"
+                  )}
+                >
+                  <div
                     className={cn(
-                      "opacity-30 transition-transform",
-                      sortColumn === col
-                        ? sortDirection === "asc"
-                          ? "rotate-180 opacity-70"
-                          : "opacity-70"
-                        : ""
+                      "flex items-center gap-1",
+                      isCollapsed && "justify-center rotate-90 origin-center"
                     )}
-                  />
-                </div>
-              </th>
-            ))}
+                  >
+                    <span
+                      onClick={() => handleSort(col)}
+                      className={cn(
+                        "cursor-pointer",
+                        isCollapsed ? "text-xs tracking-tighter" : ""
+                      )}
+                    >
+                      {col}
+                    </span>
+                    {!isCollapsed && (
+                      <ArrowUpDown
+                        size={14}
+                        className={cn(
+                          "opacity-30 transition-transform",
+                          sortColumn === col
+                            ? sortDirection === "asc"
+                              ? "rotate-180 opacity-70"
+                              : "opacity-70"
+                            : ""
+                        )}
+                      />
+                    )}
+                    <button
+                      onClick={() => toggleCollapse(col)}
+                      className="absolute -right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {isCollapsed ? (
+                        <ChevronRight size={14} />
+                      ) : (
+                        <ChevronLeft size={14} />
+                      )}
+                    </button>
+                  </div>
+                </th>
+              );
+            })}
           </tr>
         </thead>
         <tbody>
@@ -77,17 +118,22 @@ export function Table<T extends Record<string, string | number | undefined>>({
                 colSpan={columns.length}
                 className="text-center py-4 text-gray-500"
               >
-                No data available.
+                No data available
               </td>
             </tr>
           ) : (
             sortedData.map((row, idx) => (
-              <tr
-                key={idx}
-                className="border-t hover:bg-gray-50 transition-colors"
-              >
+              <tr key={idx} className="border-t hover:bg-gray-50 transition">
                 {columns.map((col) => (
-                  <td key={col} className="px-4 py-2 text-sm text-gray-800 font-mono">
+                  <td
+                    key={col}
+                    className={cn(
+                      "px-3 py-2 text-sm text-gray-800 font-mono transition-all",
+                      collapsedColumns.has(col)
+                        ? "w-0 overflow-hidden text-transparent p-0"
+                        : ""
+                    )}
+                  >
                     {renderCell ? renderCell(col, row[col], row) : row[col]}
                   </td>
                 ))}
