@@ -1,5 +1,6 @@
-import { Table, Card, Dropdown, Button } from "./components";
+import { Table, Card, Dropdown, Button, LogModal } from "./components";
 import { POD_STATUSES, statusClass } from "./constants";
+import { useLogs } from "./hooks/useLogs";
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 
@@ -12,8 +13,14 @@ export default function App() {
   const [headers, setHeaders] = useState<string[]>([]);
   const [namespaces, setNamespaces] = useState<string[]>([]);
   const [selectedNamespace, setSelectedNamespace] = useState("All");
-  const [loading, setLoading] = useState(false);
+  const [podLoading, setPodLoading] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<string>("All");
+  const { logs, loading, error, fetchLogs, clearLogs } = useLogs();
+  const [showLogs, setShowLogs] = useState(false);
+  const handleShowLogs = async (podName: string) => {
+    await fetchLogs(podName);
+    setShowLogs(true);
+  };
 
   useEffect(() => {
     async function fetchNamespaces() {
@@ -28,13 +35,14 @@ export default function App() {
   }, []);
 
   async function loadPods() {
-    setLoading(true);
+    setPodLoading(true);
     try {
       const result = await invoke<string>("get_pods", {
         namespace: selectedNamespace,
       });
       const lines = result.trim().split("\n");
       const parsedHeaders = lines[0].split(/\s+/);
+      if (!parsedHeaders.includes("Logs")) parsedHeaders.push("Logs");
       const podList: Pod[] = lines.slice(1).map((line) => {
         const columns = line.split(/\s+/);
         const pod: Pod = {};
@@ -45,7 +53,7 @@ export default function App() {
       setPods(podList);
       setSelectedStatus("All");
     } finally {
-      setLoading(false);
+      setPodLoading(false);
     }
   }
 
@@ -66,8 +74,8 @@ export default function App() {
               options={namespaces}
               onChange={setSelectedNamespace}
             />
-            <Button onClick={loadPods} disabled={loading}>
-              {loading ? "Loading..." : "Load Pods"}
+            <Button onClick={loadPods} disabled={podLoading}>
+              {podLoading ? "Loading..." : "Load Pods"}
             </Button>
             {pods.length > 0 && (
               <Dropdown
@@ -87,8 +95,9 @@ export default function App() {
               data={filteredPods}
               columns={headers}
               initialRowsPerPage={5}
-              renderCell={(col, value) => {
-                if (col.toLowerCase() === "status") {
+              renderCell={(col, value, row) => {
+                const lowerCol = col.toLowerCase();
+                if (lowerCol === "status") {
                   return (
                     <span
                       className={`px-2 py-1 rounded-full text-sm font-semibold ${statusClass(
@@ -99,12 +108,30 @@ export default function App() {
                     </span>
                   );
                 }
+                if (lowerCol === "logs") {
+                  return (
+                    <button
+                      onClick={() => handleShowLogs(row["NAME"])}
+                      className="text-xs text-blue-600 hover:text-blue-800 font-medium hover:underline transition"
+                    >
+                      Logs
+                    </button>
+                  );
+                }
                 return value;
               }}
             />
           </Card>
         )}
       </div>
+      <LogModal
+        open={showLogs}
+        onClose={() => {
+          setShowLogs(false);
+          clearLogs();
+        }}
+        logs={logs}
+      />
     </main>
   );
 }
