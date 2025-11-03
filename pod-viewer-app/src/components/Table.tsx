@@ -7,6 +7,7 @@ interface TableProps<T> {
   columns: string[];
   onSort?: (column: string, direction: "asc" | "desc") => void;
   renderCell?: (column: string, value: any, row: T) => React.ReactNode;
+  initialRowsPerPage?: number;
 }
 
 export function Table<T extends Record<string, string | number | undefined>>({
@@ -14,11 +15,16 @@ export function Table<T extends Record<string, string | number | undefined>>({
   columns,
   onSort,
   renderCell,
+  initialRowsPerPage = 10,
 }: TableProps<T>) {
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [collapsedColumns, setCollapsedColumns] = useState<Set<string>>(new Set());
   
+  const [page, setPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(initialRowsPerPage);
+  const totalPages = Math.ceil(data.length / rowsPerPage);
+
   const handleSort = (column: string) => {
     let newDirection: "asc" | "desc" = "asc";
     if (sortColumn === column && sortDirection === "asc") {
@@ -50,6 +56,15 @@ export function Table<T extends Record<string, string | number | undefined>>({
       return newSet;
     });
   };
+
+  const paginatedData = sortedData.slice(
+    (page - 1) * rowsPerPage,
+    page * rowsPerPage
+  );
+
+  React.useEffect(() => {
+    setPage(1);
+  }, [rowsPerPage]);
 
   return (
     <div className="overflow-x-auto">
@@ -116,7 +131,7 @@ export function Table<T extends Record<string, string | number | undefined>>({
           </tr>
         </thead>
         <tbody>
-          {sortedData.length === 0 ? (
+          {paginatedData.length === 0 ? (
             <tr>
               <td
                 colSpan={columns.length}
@@ -126,7 +141,7 @@ export function Table<T extends Record<string, string | number | undefined>>({
               </td>
             </tr>
           ) : (
-            sortedData.map((row, idx) => (
+            paginatedData.map((row, idx) => (
               <tr key={idx} className="border-t hover:bg-gray-50 transition">
                 {columns.map((col) => (
                   <td
@@ -146,6 +161,54 @@ export function Table<T extends Record<string, string | number | undefined>>({
           )}
         </tbody>
       </table>
+      {data.length > rowsPerPage && (
+        <div className="flex items-center justify-between py-3 px-4 text-sm text-gray-600">
+          <button
+            className={cn(
+              "px-3 py-1 rounded border transition",
+              page === 1
+                ? "opacity-50 cursor-not-allowed"
+                : "hover:bg-gray-100 border-gray-300"
+            )}
+            disabled={page === 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+          >
+            Previous
+          </button>
+          <span>
+            Page <strong>{page}</strong> of <strong>{totalPages}</strong>
+          </span>
+           <div className="flex items-center gap-2">
+            <label htmlFor="rows-per-page" className="text-gray-500">
+              Rows per page:
+            </label>
+            <select
+              id="rows-per-page"
+              value={rowsPerPage}
+              onChange={(e) => setRowsPerPage(Number(e.target.value))}
+              className="border border-gray-300 rounded px-2 py-1 text-sm focus:ring-blue-400 focus:border-blue-400"
+            >
+              {[5, 10, 20, 50, 100].map((num) => (
+                <option key={num} value={num}>
+                  {num}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button
+            className={cn(
+              "px-3 py-1 rounded border transition",
+              page === totalPages
+                ? "opacity-50 cursor-not-allowed"
+                : "hover:bg-gray-100 border-gray-300"
+            )}
+            disabled={page === totalPages}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -89,6 +89,7 @@ export default function App() {
             <Table
               data={filteredPods}
               columns={headers}
+              initialRowsPerPage={5}
               renderCell={(col, value) => {
                 if (col.toLowerCase() === "status") {
                   return (
