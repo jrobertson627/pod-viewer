@@ -63,6 +63,21 @@ fn stream_logs(pod_name: String, namespace: String) -> Result<Vec<String>, Strin
 
     Ok(logs)
 }
+
+#[tauri::command]
+fn get_pod_info(namespace: String, pod: String) -> Result<String, String> {
+    let output = std::process::Command::new("minikube")
+        .args(["kubectl", "--", "describe", "pod", &pod, "-n", &namespace])
+        .output()
+        .map_err(|e| e.to_string())?;
+
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).into_owned())
+    } else {
+        Err(String::from_utf8_lossy(&output.stderr).into_owned())
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -70,7 +85,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_pods,
             get_namespaces,
-            stream_logs
+            stream_logs,
+            get_pod_info
             ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
