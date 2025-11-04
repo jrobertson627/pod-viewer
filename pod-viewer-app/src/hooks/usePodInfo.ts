@@ -1,5 +1,4 @@
-import { useState, useCallback } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { useKubeCommand } from "./useKubeCommand";
 
 interface PodInfo {
   labels: Record<string, string>;
@@ -8,28 +7,11 @@ interface PodInfo {
 }
 
 export function usePodInfo() {
-  const [podInfo, setPodInfo] = useState<PodInfo>({
-    labels: {},
-    containers: [],
-    events: [],
-  });
+  const { data: podInfo, loading, runCommand } = useKubeCommand<PodInfo>();
 
-  const getPodInfo = useCallback(
-    async (podName: string, namespace: string) => {
-      try {
-        const result = await invoke<string>("get_pod_info", {
-          namespace,
-          pod: podName,
-        });
-        const data: PodInfo = JSON.parse(result);
-        setPodInfo(data);
-      } catch (err) {
-        console.error("Failed to fetch pod info:", err);
-        setPodInfo({ labels: {}, containers: [], events: [] });
-      }
-    },
-    []
-  );
+  const getPodInfo = async (podName: string, namespace: string) => {
+    await runCommand("get_pod_info", { pod: podName, namespace }, true);
+  };
 
-  return { podInfo, getPodInfo };
+  return { podInfo, loading, getPodInfo };
 }

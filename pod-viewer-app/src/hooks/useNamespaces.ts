@@ -1,29 +1,18 @@
-import { useState, useCallback, useEffect } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { useEffect } from "react";
+import { useKubeCommand } from "./useKubeCommand";
 
 export function useNamespaces() {
-  const [namespaces, setNamespaces] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  const fetchNamespaces = useCallback(async () => {
-    setLoading(true);
-    try {
-      const result = await invoke<string>("get_namespaces");
-      const list = result
+    const { data, loading, runCommand } = useKubeCommand<string>();
+  const namespaces = data
+    ? ["All", ...data
         .split("\n")
         .filter((n) => n.trim().length > 0)
-        .map((n) => n.replace("namespace/", ""));
-      setNamespaces(["All", ...list]);
-    } catch (err) {
-      console.error("Failed to fetch namespaces:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+        .map((n) => n.replace("namespace/", ""))]
+    : [];
 
   useEffect(() => {
-    fetchNamespaces();
-  }, [fetchNamespaces]);
+    runCommand("get_namespaces");
+  }, [runCommand]);
 
-  return { namespaces, loading, fetchNamespaces };
+  return { namespaces, loading, refetch: () => runCommand("get_namespaces") };
 }

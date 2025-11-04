@@ -117,9 +117,9 @@ export default function App() {
         onClose={() => setSelectedPod(null)}
         podName={selectedPod?.name ?? ""}
         namespace={selectedPod?.namespace ?? ""}
-        labels={podInfo.labels}
-        containers={podInfo.containers}
-        events={podInfo.events}
+        labels={podInfo?.labels}
+        containers={podInfo?.containers}
+        events={podInfo?.events}
       />
     </main>
   );
