@@ -1,4 +1,3 @@
-// hooks/useLogs.ts
 import { useState, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core"
 

@@ -1,86 +1,21 @@
 import { Table, Card, Dropdown, Button, LogModal, PodInfoModal } from "./components";
-import { Pod, PodInfo, POD_STATUSES, statusClass } from "./constants";
-import { useLogs } from "./hooks/useLogs";
-import { useEffect, useState, useCallback } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { POD_STATUSES, statusClass } from "./constants";
+import { useLogs, useNamespaces, usePodInfo, usePods } from "./hooks";
+import { useState } from "react";
 
 export default function App() {
   /* STATE */
-  const [pods, setPods] = useState<Pod[]>([]);
-  const [headers, setHeaders] = useState<string[]>([]);
-  const [namespaces, setNamespaces] = useState<string[]>([]);
-  const [selectedNamespace, setSelectedNamespace] = useState("All");
-  const [podLoading, setPodLoading] = useState(false);
-  const [selectedStatus, setSelectedStatus] = useState<string>("All");
+  const { namespaces } = useNamespaces();
+  const { pods, headers, loading: podLoading, loadPods } = usePods();
   const { logs, fetchLogs, clearLogs } = useLogs();
-  const [showLogs, setShowLogs] = useState(false);
+  const { podInfo, getPodInfo } = usePodInfo();
+
+  const [selectedNamespace, setSelectedNamespace] = useState("All");
+  const [selectedStatus, setSelectedStatus] = useState<string>("All");
   const [selectedPod, setSelectedPod] = useState<{ name: string; namespace: string } | null>(null);
-  const [podInfo, setPodInfo] = useState<PodInfo>({
-    labels: {},
-    containers: [],
-    events: [],
-  });
 
-  /* API CALLS */
-  /** Fetch all namespaces */
-  const getNamespaces = useCallback(async () => {
-    try {
-      const result = await invoke<string>("get_namespaces");
-      const list = result
-        .split("\n")
-        .filter((n) => n.trim().length > 0)
-        .map((n) => n.replace("namespace/", ""));
-      setNamespaces(["All", ...list]);
-    } catch (err) {
-      console.error("Failed to fetch namespaces:", err);
-    }
-  }, []);
-
-  /* LOAD PODS FOR A NAMESPACE */
-  const loadPods = useCallback(async () => {
-    setPodLoading(true);
-    try {
-      const result = await invoke<string>("get_pods", {
-        namespace: selectedNamespace,
-      });
-
-      const lines = result.trim().split("\n");
-      const parsedHeaders = lines[0].split(/\s+/);
-      if (!parsedHeaders.includes("Logs")) parsedHeaders.push("Logs");
-      const podList: Pod[] = lines.slice(1).map((line) => {
-        const columns = line.split(/\s+/);
-        const pod: Pod = {};
-        parsedHeaders.forEach((h, i) => (pod[h] = columns[i] || ""));
-        return pod;
-      });
-
-      setHeaders(parsedHeaders);
-      setPods(podList);
-      setSelectedStatus("All");
-    } catch (err) {
-      console.error("Failed to load pods:", err);
-    } finally {
-      setPodLoading(false);
-    }
-  }, [selectedNamespace]);
-
-  /* FETCH A SINGLE POD'S DETAILS */
-  const getPodInfo = useCallback(
-    async ({ name, namespace }: { name: string; namespace: string }) => {
-    try {
-     const result = await invoke<string>("get_pod_info", {
-        namespace: namespace,
-        pod: name,
-      });
-
-      const data: PodInfo = JSON.parse(result);
-      setPodInfo(data);
-    } catch (err) {
-      console.error("Failed to load pod info:", err);
-      setPodInfo({ labels: {}, containers: [], events: [] });
-    }
-  }, []);
-
+  const [showLogs, setShowLogs] = useState(false);
+  
   /* SHOW LOGS MODAL */
   const handleShowLogs = async (podName: string) => {
     await fetchLogs(podName);
@@ -90,13 +25,8 @@ export default function App() {
   /* OPEN POD'S INFO MODAL */
   const openPodInfo = async (podName: string, namespace: string) => {
     setSelectedPod({ name: podName, namespace });
-    await getPodInfo({name: podName, namespace});
+    await getPodInfo(podName, namespace);
   }
-
-  /** EFFECTS */
-  useEffect(() => {
-    getNamespaces();
-  }, [getNamespaces]);
 
   /* FILTERED PODS */
   const filteredPods = pods.filter((pod) => {
@@ -116,7 +46,7 @@ export default function App() {
               options={namespaces}
               onChange={setSelectedNamespace}
             />
-            <Button onClick={loadPods} disabled={podLoading}>
+            <Button onClick={() => loadPods(selectedNamespace)} disabled={podLoading}>
               {podLoading ? "Loading..." : "Load Pods"}
             </Button>
             {pods.length > 0 && (
