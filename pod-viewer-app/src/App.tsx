@@ -17,8 +17,8 @@ export default function App() {
   const [showLogs, setShowLogs] = useState(false);
   
   /* SHOW LOGS MODAL */
-  const handleShowLogs = async (podName: string) => {
-    await fetchLogs(podName);
+  const handleShowLogs = async (podName: string, namespace: string) => {
+    await fetchLogs(podName, namespace);
     setShowLogs(true);
   };
  
@@ -83,12 +83,14 @@ export default function App() {
                 if (lowerCol === "logs") {
                   return (
                     <div className="flex flex-col space-y-1">
-                      <button
-                        onClick={() => handleShowLogs(row["NAME"])}
+                      {row["NAMESPACE"] !== "kube-system" &&
+                      (<button
+                        onClick={() => handleShowLogs(row["NAME"], row["NAMESPACE"])}
                         className="text-xs text-blue-600 hover:text-blue-800 font-medium hover:underline transition"
                       >
                         Logs
-                      </button>
+                      </button>)
+                    }
                       <button
                         onClick={() => openPodInfo(row["NAME"], row["NAMESPACE"])}
                         className="text-xs text-blue-600 hover:text-blue-800 font-medium hover:underline transition"
