@@ -1,3 +1,13 @@
+export interface Pod {
+  [key: string]: string;
+}
+
+export interface PodInfo {
+  labels: Record<string, string>;
+  containers: { name: string; image: string }[];
+  events: { reason: string; message: string; age: string }[];
+}
+
 export const POD_STATUSES = [
   "All",
   "Pending",

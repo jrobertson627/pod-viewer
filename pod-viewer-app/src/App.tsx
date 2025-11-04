@@ -1,18 +1,8 @@
 import { Table, Card, Dropdown, Button, LogModal, PodInfoModal } from "./components";
-import { POD_STATUSES, statusClass } from "./constants";
+import { Pod, PodInfo, POD_STATUSES, statusClass } from "./constants";
 import { useLogs } from "./hooks/useLogs";
 import { useEffect, useState, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
-
-interface Pod {
-  [key: string]: string;
-}
-
-interface PodInfo {
-  labels: Record<string, string>;
-  containers: { name: string; image: string }[];
-  events: { reason: string; message: string; age: string }[];
-}
 
 export default function App() {
   /* STATE */
